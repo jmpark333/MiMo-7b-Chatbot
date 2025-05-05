@@ -116,7 +116,7 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
         system_message = next((msg for msg in st.session_state.messages if msg["role"] == "system"), None)
         if system_message:
             st.session_state.messages = [system_message, user_message]
-            st.experimental_rerun()
+            st.rerun()
             
     # API 요청 보내기
     try:
