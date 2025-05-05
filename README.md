@@ -1,0 +1,25 @@
+# MiMo-7b-Chatbot Streamlit Interface
+
+이 프로젝트는 로컬에서 실행되는 LM Studio의 `mimo-7b-rl` 모델과 상호작용하는 간단한 Streamlit 기반 챗봇 인터페이스입니다.
+
+## 주요 기능
+
+*   **Streamlit 기반 UI:** 사용자와 챗봇 간의 대화를 위한 웹 인터페이스를 제공합니다.
+*   **LM Studio 연동:** 로컬 머신에서 실행 중인 LM Studio API (`http://127.0.0.1:1234/v1/chat/completions`)와 통신하여 모델 응답을 가져옵니다.
+*   **대화 기록 관리:** Streamlit의 세션 상태(`st.session_state`)를 사용하여 현재 세션의 대화 기록을 유지합니다.
+*   **스트리밍 응답:** 모델의 응답을 실시간으로 받아와 사용자에게 점진적으로 표시합니다 (`stream=True`). 이를 통해 사용자는 응답이 생성되는 과정을 볼 수 있습니다.
+*   **생각/답변 분리 및 접기:** 모델 응답 내 `<think>...</think>` 태그로 감싸진 부분을 별도의 접을 수 있는 섹션으로 표시합니다. 이를 통해 모델의 "생각" 과정을 확인하거나 숨길 수 있습니다.
+
+## 실행 방법
+
+1.  **LM Studio 실행:** 로컬 머신에서 LM Studio를 실행하고 `mimo-7b-rl` 모델을 로드한 후 API 서버를 시작합니다.
+2.  **필요 라이브러리 설치:**
+    ```bash
+    pip install streamlit requests
+    ```
+3.  **Streamlit 앱 실행:**
+    ```bash
+    streamlit run app.py
+    ```
+
+이제 웹 브라우저에서 Streamlit 앱에 접속하여 챗봇과 대화할 수 있습니다.
