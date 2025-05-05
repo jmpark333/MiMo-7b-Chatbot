@@ -12,6 +12,8 @@ st.title("💬 Mimo-7b-rl Chatbot")
 # 세션 상태 초기화 (대화 기록 저장용)
 if "messages" not in st.session_state:
     st.session_state.messages = []
+# Add a system prompt to instruct the chatbot to respond in English
+    st.session_state.messages.append({"role": "system", "content": "You must always answer in English."})
 
 def render_with_expanders(content):
     # Replace <think>...</think> blocks with collapsible markdown (details/summary)
