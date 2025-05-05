@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 import re
+import uuid
 
 # API 엔드포인트 URL
 API_URL = "http://127.0.0.1:1234/v1/chat/completions"
@@ -12,8 +13,10 @@ st.title("💬 Mimo-7b-rl Chatbot")
 # 세션 상태 초기화 (대화 기록 저장용)
 if "messages" not in st.session_state:
     st.session_state.messages = []
-# Add a system prompt to instruct the chatbot to respond in English
-    st.session_state.messages.append({"role": "system", "content": "You must always answer in English."})
+    # Add a system prompt to instruct the chatbot to respond in English
+    st.session_state.messages.append({"role": "system", "content": "You must always answer in English. Answer the current question based on the most recent user input."})
+    # 각 메시지에 고유 ID 부여를 위한 카운터 초기화
+    st.session_state.message_counter = 0
 
 def process_latex(content):
     """LaTeX 수식을 처리하는 함수"""
@@ -74,17 +77,28 @@ for message in st.session_state.messages:
 
 # 사용자 입력 받기
 if prompt := st.chat_input("메시지를 입력하세요..."):
+    # 사용자 메시지에 고유 ID 부여
+    message_id = f"user_{st.session_state.message_counter}"
+    st.session_state.message_counter += 1
+    
     # 사용자 메시지를 대화 기록에 추가하고 화면에 표시
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    user_message = {"role": "user", "content": prompt, "id": message_id}
+    st.session_state.messages.append(user_message)
+    
     with st.chat_message("user"):
         st.markdown(prompt) # 사용자 입력은 그대로 마크다운으로 표시
 
     # API 요청 보내기
     try:
-        # 요청 본문 생성
+        # 요청 본문 생성 - 메시지 ID 제거한 버전 생성
+        api_messages = []
+        for msg in st.session_state.messages:
+            api_msg = {"role": msg["role"], "content": msg["content"]}
+            api_messages.append(api_msg)
+            
         payload = {
             "model": "mimo-7b-rl",
-            "messages": st.session_state.messages, # 전체 대화 기록 전달
+            "messages": api_messages, # ID가 제거된 메시지 목록
             "temperature": 0.7,
             "max_tokens": -1,
             "stream": True
@@ -98,6 +112,10 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
         response.raise_for_status()
         response.encoding = 'utf-8'
 
+        # 응답 메시지에 고유 ID 부여
+        response_id = f"assistant_{st.session_state.message_counter}"
+        st.session_state.message_counter += 1
+        
         assistant_content = ""
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
@@ -135,10 +153,15 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
                  st.write("Raw response lines received before error:")
                  st.json(full_response_data)
 
-
             # 최종 메시지 저장 및 표시
             if assistant_content:
-                 assistant_message = {"role": "assistant", "content": assistant_content}
+                 # 응답 메시지에 ID 포함하여 저장
+                 assistant_message = {
+                     "role": "assistant", 
+                     "content": assistant_content,
+                     "id": response_id,
+                     "in_response_to": message_id  # 어떤 사용자 메시지에 대한 응답인지 기록
+                 }
                  st.session_state.messages.append(assistant_message)
                  
                  # 최종 메시지를 컨테이너에 렌더링
