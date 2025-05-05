@@ -3,20 +3,30 @@ import requests
 import json
 import re
 import uuid
+import time
 
 # API 엔드포인트 URL
 API_URL = "http://127.0.0.1:1234/v1/chat/completions"
 
 # Streamlit 앱 제목 설정
-st.title("💬 Mimo-7b-rl Chatbot")
+st.title("💬 MiMo-7B-RL 챗봇")
 
 # 세션 상태 초기화 (대화 기록 저장용)
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Add a system prompt to instruct the chatbot to respond in English
-    st.session_state.messages.append({"role": "system", "content": "You must always answer in English. Answer the current question based on the most recent user input."})
+    # 시스템 프롬프트 강화 - 항상 최신 질문에 집중하도록 지시
+    st.session_state.messages.append({
+        "role": "system", 
+        "content": """You must always answer in English. 
+IMPORTANT: Always focus ONLY on the most recent user question. 
+Do not refer to or answer previous questions unless explicitly asked to do so.
+Each new question should be treated as a completely separate request.
+Ignore any context from previous exchanges unless specifically referenced in the current question."""
+    })
     # 각 메시지에 고유 ID 부여를 위한 카운터 초기화
     st.session_state.message_counter = 0
+    # 마지막 질문 시간 기록
+    st.session_state.last_question_time = time.time()
 
 def process_latex(content):
     """LaTeX 수식을 처리하는 함수"""
@@ -77,24 +87,51 @@ for message in st.session_state.messages:
 
 # 사용자 입력 받기
 if prompt := st.chat_input("메시지를 입력하세요..."):
+    # 현재 시간 기록
+    current_time = time.time()
+    
     # 사용자 메시지에 고유 ID 부여
     message_id = f"user_{st.session_state.message_counter}"
     st.session_state.message_counter += 1
     
     # 사용자 메시지를 대화 기록에 추가하고 화면에 표시
-    user_message = {"role": "user", "content": prompt, "id": message_id}
+    user_message = {
+        "role": "user", 
+        "content": prompt, 
+        "id": message_id,
+        "timestamp": current_time
+    }
     st.session_state.messages.append(user_message)
     
     with st.chat_message("user"):
         st.markdown(prompt) # 사용자 입력은 그대로 마크다운으로 표시
 
+    # 이전 질문과 현재 질문 사이의 시간 간격 계산 (초 단위)
+    time_since_last_question = current_time - st.session_state.last_question_time
+    st.session_state.last_question_time = current_time
+    
+    # 질문 간격이 길면 컨텍스트 초기화 고려 (예: 5분 이상)
+    if time_since_last_question > 300:  # 5분 = 300초
+        # 시스템 메시지만 남기고 나머지 대화 기록 초기화
+        system_message = next((msg for msg in st.session_state.messages if msg["role"] == "system"), None)
+        if system_message:
+            st.session_state.messages = [system_message, user_message]
+            st.experimental_rerun()
+            
     # API 요청 보내기
     try:
         # 요청 본문 생성 - 메시지 ID 제거한 버전 생성
         api_messages = []
         for msg in st.session_state.messages:
+            # 필요한 필드만 포함
             api_msg = {"role": msg["role"], "content": msg["content"]}
             api_messages.append(api_msg)
+            
+        # 최신 질문에 집중하도록 하는 특별 메시지 추가
+        api_messages.append({
+            "role": "system",
+            "content": f"IMPORTANT: The following is the CURRENT question you must answer now: '{prompt}'. Ignore all previous questions and focus ONLY on this one."
+        })
             
         payload = {
             "model": "mimo-7b-rl",
@@ -160,7 +197,8 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
                      "role": "assistant", 
                      "content": assistant_content,
                      "id": response_id,
-                     "in_response_to": message_id  # 어떤 사용자 메시지에 대한 응답인지 기록
+                     "in_response_to": message_id,  # 어떤 사용자 메시지에 대한 응답인지 기록
+                     "timestamp": time.time()
                  }
                  st.session_state.messages.append(assistant_message)
                  
