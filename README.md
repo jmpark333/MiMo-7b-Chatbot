@@ -1,4 +1,4 @@
-# MiMo-7b-Chatbot Streamlit Interface
+# MiMo-7B-Chatbot Streamlit Interface
 
 이 프로젝트는 로컬에서 실행되는 LM Studio의 `mimo-7b-rl` 모델과 상호작용하는 간단한 Streamlit 기반 챗봇 인터페이스입니다.
 
